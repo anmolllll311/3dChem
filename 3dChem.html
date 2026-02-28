@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3dChem — Molecular Explorer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Doto:wght@100..900&family=Quicksand:wght@300..700&display=swap');
+
+    :root {
+      --bg: #060b10;
+      --border: #1a2d3d;
+      --accent: #00d4ff;
+      --accent2: #ff6b35;
+      --text: #e8f4f8;
+      --muted: #5a8a9f;
+      --panel: rgba(10, 20, 30, 0.97);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Quicksand', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 212, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 212, 255, 0.025) 1px, transparent 1px);
+      background-size: 44px 44px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+    }
+
+    .logo {
+      font-family: 'Doto', sans-serif;
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--accent);
+      white-space: nowrap;
+      letter-spacing: -0.03em;
+    }
+
+    .logo span {
+      color: var(--accent2);
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    #compound-input {
+      flex: 1;
+      background: rgba(0, 212, 255, 0.06);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 13px;
+      color: var(--text);
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #compound-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+    }
+
+    #compound-input::placeholder {
+      color: var(--muted);
+    }
+
+    #search-btn {
+      padding: 8px 16px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 6px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    #search-btn:hover {
+      background: #33ddff;
+      transform: translateY(-1px);
+    }
+
+    #search-btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .quick-picks {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .qpick {
+      padding: 4px 10px;
+      background: rgba(255, 107, 53, 0.08);
+      border: 1px solid rgba(255, 107, 53, 0.25);
+      border-radius: 20px;
+      color: var(--accent2);
+      font-size: 0.7rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .qpick:hover {
+      background: rgba(255, 107, 53, 0.18);
+      border-color: var(--accent2);
+    }
+
+
+
+    main {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #three-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #info-panel {
+      width: 272px;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+    }
+
+    #molecule-info {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+    }
+
+    #molecule-info::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    #molecule-info::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    #welcome-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 10px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.76rem;
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    #welcome-panel .big {
+      font-size: 2.5rem;
+      opacity: 0.18;
+    }
+
+    .mol-name {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin-bottom: 2px;
+      line-height: 1.2;
+    }
+
+    .mol-formula {
+      font-size: 0.8rem;
+      color: var(--accent2);
+      margin-bottom: 12px;
+    }
+
+    .info-block {
+      margin-bottom: 9px;
+      padding: 9px 11px;
+      background: rgba(0, 212, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .info-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .info-value {
+      font-size: 0.78rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .atom-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin: 2px 3px 2px 0;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .atom-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    #atom-card {
+      display: none;
+      padding: 10px 12px;
+      background: rgba(0, 212, 255, 0.07);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    #atom-card .ac-sym {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    #atom-card .ac-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 2px 0 7px;
+    }
+
+    #atom-card .ac-rows {
+      font-size: 0.71rem;
+      color: var(--muted);
+      line-height: 1.85;
+    }
+
+    #atom-card .ac-desc {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 5px;
+      font-style: italic;
+    }
+
+    #atom-legend {
+      padding: 11px 14px;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .leg-title {
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+
+    .leg-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .leg-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.68rem;
+    }
+
+    .leg-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #atom-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(8, 18, 28, 0.96);
+      border: 1px solid var(--accent);
+      border-radius: 7px;
+      padding: 8px 12px;
+      font-size: 0.74rem;
+      max-width: 175px;
+      box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
+      display: none;
+      z-index: 200;
+      backdrop-filter: blur(8px);
+    }
+
+    #atom-tooltip .tt-sym {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: var(--accent);
+    }
+
+    #atom-tooltip .tt-nm {
+      font-size: 0.73rem;
+      color: var(--text);
+    }
+
+    #atom-tooltip .tt-hint {
+      font-size: 0.62rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 13px;
+      background: rgba(6, 11, 16, 0.85);
+      z-index: 50;
+      backdrop-filter: blur(4px);
+    }
+
+    #loading.show {
+      display: flex;
+    }
+
+    .spin {
+      width: 44px;
+      height: 44px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spin-text {
+      font-size: 0.73rem;
+      color: var(--muted);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 0.35
+      }
+
+      50% {
+        opacity: 1
+      }
+    }
+
+    #error-msg {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(180, 30, 30, 0.12);
+      border: 1px solid rgba(255, 70, 70, 0.35);
+      color: #ff7070;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      z-index: 200;
+      display: none;
+      backdrop-filter: blur(8px);
+      max-width: 90%;
+      text-align: center;
+    }
+
+    #canvas-welcome {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .cw-icon {
+      font-size: 3.5rem;
+      opacity: 0.1;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0)
+      }
+
+      50% {
+        transform: translateY(-8px)
+      }
+    }
+
+    .cw-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      opacity: 0.18;
+    }
+
+    .cw-sub {
+      font-size: 0.7rem;
+      color: var(--muted);
+      opacity: 0.38;
+      text-align: center;
+      max-width: 240px;
+      line-height: 1.65;
+    }
+
+
+
+    /* 3D style toggle */
+    .style-btn {
+      padding: 4px 10px;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 4px;
+      color: var(--accent);
+      font-size: 0.68rem;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      transition: all 0.15s;
+    }
+
+    .style-btn:hover {
+      background: rgba(0, 212, 255, 0.16);
+    }
+
+    .style-btn.active {
+      background: rgba(0, 212, 255, 0.2);
+      border-color: var(--accent);
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">3d<span>Chem</span></div>
+    <div class="search-row">
+      <input type="text" id="compound-input" placeholder="caffeine, aspirin, penicillin, water, ATP…"
+        autocomplete="off" />
+      <button id="search-btn">SYNTHESIZE</button>
+    </div>
+    <div class="quick-picks">
+      <div class="qpick" onclick="loadCompound('water')">H₂O</div>
+      <div class="qpick" onclick="loadCompound('caffeine')">Caffeine</div>
+      <div class="qpick" onclick="loadCompound('aspirin')">Aspirin</div>
+      <div class="qpick" onclick="loadCompound('glucose')">Glucose</div>
+      <div class="qpick" onclick="loadCompound('dopamine')">Dopamine</div>
+      <div class="qpick" onclick="loadCompound('ethanol')">Ethanol</div>
+      <div class="qpick" onclick="loadCompound('cholesterol')">Cholesterol</div>
+      <div class="qpick" onclick="loadCompound('adenosine triphosphate')">ATP</div>
+      <div class="qpick" onclick="loadCompound('penicillin G')">Penicillin</div>
+    </div>
+  </header>
+
+  <main>
+    <div id="canvas-container">
+      <canvas id="three-canvas"></canvas>
+
+      <div id="canvas-welcome">
+        <div class="cw-icon">⚗️</div>
+        <div class="cw-title">Molecular Explorer</div>
+        <div class="cw-sub">Type any compound name to see its real 3D atomic structure. Click atoms for details.</div>
+      </div>
+
+      <div id="loading">
+        <div class="spin"></div>
+        <div class="spin-text" id="loading-text">Fetching structure from PubChem…</div>
+      </div>
+
+      <div id="error-msg"></div>
+
+      <div id="atom-tooltip">
+        <div class="tt-sym" id="tt-sym"></div>
+        <div class="tt-nm" id="tt-nm"></div>
+        <div class="tt-hint">Click for full details</div>
+      </div>
+    </div>
+
+    <div id="info-panel">
+      <div class="panel-title">Molecule Info</div>
+      <div id="molecule-info">
+        <div id="welcome-panel">
+          <div class="big">🔬</div>
+          <div>No molecule loaded.<br>Search any compound above.<br><br><span style="font-size:0.65rem;opacity:0.6">Uses
+              real crystallographic data<br>from the PubChem database.</span></div>
+        </div>
+        <div id="mol-content" style="display:none">
+          <div id="atom-card"></div>
+          <div id="mol-main"></div>
+        </div>
+      </div>
+      <div id="atom-legend">
+        <div class="leg-title">CPK Atom Colors</div>
+        <div class="leg-wrap" id="leg-wrap"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    'use strict';
+
+    // ─── Element Database (CPK colors) ────────────────────────────────────────────
+    const EL = {
+      H: { name: 'Hydrogen', color: '#FFFFFF', r: 0.53, mass: 1.008, group: 'Nonmetal', period: 1, desc: 'Lightest element; most abundant in the universe. Key in organic molecules and water.' },
+      He: { name: 'Helium', color: '#D9FFFF', r: 0.31, mass: 4.003, group: 'Noble Gas', period: 1, desc: 'Noble gas; used in balloons and cryogenics. Does not form chemical bonds.' },
+      Li: { name: 'Lithium', color: '#CC80FF', r: 1.67, mass: 6.941, group: 'Alkali Metal', period: 2, desc: 'Lightest metal; used in batteries and mood-stabilizing medication.' },
+      B: { name: 'Boron', color: '#FFB5B5', r: 0.87, mass: 10.81, group: 'Metalloid', period: 2, desc: 'Used in borosilicate glass, antiseptics, and semiconductors.' },
+      C: { name: 'Carbon', color: '#404040', r: 0.77, mass: 12.011, group: 'Nonmetal', period: 2, desc: 'Backbone of all organic chemistry. Forms 4 bonds; exists as diamond and graphite.' },
+      N: { name: 'Nitrogen', color: '#3050F8', r: 0.75, mass: 14.007, group: 'Nonmetal', period: 2, desc: '78% of Earth\'s atmosphere. Essential in amino acids, DNA, and explosives.' },
+      O: { name: 'Oxygen', color: '#FF0D0D', r: 0.73, mass: 15.999, group: 'Nonmetal', period: 2, desc: 'Essential for respiration and combustion. Highly electronegative.' },
+      F: { name: 'Fluorine', color: '#90E050', r: 0.64, mass: 18.998, group: 'Halogen', period: 2, desc: 'Most electronegative element. Used in PTFE (Teflon) and fluoride toothpaste.' },
+      Na: { name: 'Sodium', color: '#AB5CF2', r: 1.90, mass: 22.990, group: 'Alkali Metal', period: 3, desc: 'Key electrolyte in nerve impulse transmission. Highly reactive with water.' },
+      Mg: { name: 'Magnesium', color: '#8AFF00', r: 1.45, mass: 24.305, group: 'Alkaline Earth', period: 3, desc: 'Central atom in chlorophyll. Involved in 300+ enzymatic reactions.' },
+      Al: { name: 'Aluminum', color: '#BFA6A6', r: 1.18, mass: 26.982, group: 'Post-transition', period: 3, desc: 'Most abundant metal in Earth\'s crust. Lightweight and corrosion-resistant.' },
+      Si: { name: 'Silicon', color: '#F0C8A0', r: 1.11, mass: 28.085, group: 'Metalloid', period: 3, desc: 'Basis of semiconductor technology. Second most abundant element in Earth\'s crust.' },
+      P: { name: 'Phosphorus', color: '#FF8000', r: 1.06, mass: 30.974, group: 'Nonmetal', period: 3, desc: 'Critical for DNA/RNA backbone and ATP energy transfer. Used in fertilizers.' },
+      S: { name: 'Sulfur', color: '#FFFF30', r: 1.02, mass: 32.060, group: 'Nonmetal', period: 3, desc: 'Found in proteins (disulfide bonds) and vitamins. Yellow crystalline solid.' },
+      Cl: { name: 'Chlorine', color: '#1FF01F', r: 0.99, mass: 35.450, group: 'Halogen', period: 3, desc: 'Used in water disinfection and PVC production. Forms ionic salts with metals.' },
+      K: { name: 'Potassium', color: '#8F40D4', r: 2.43, mass: 39.098, group: 'Alkali Metal', period: 4, desc: 'Critical for heart function and nerve signals. Essential electrolyte in cells.' },
+      Ca: { name: 'Calcium', color: '#3DFF00', r: 1.94, mass: 40.078, group: 'Alkaline Earth', period: 4, desc: 'Most abundant mineral in the human body. Builds bones, teeth, and enables muscle contraction.' },
+      Fe: { name: 'Iron', color: '#E06633', r: 1.56, mass: 55.845, group: 'Transition', period: 4, desc: 'Central atom of hemoglobin, enabling oxygen transport in blood. Most used metal.' },
+      Cu: { name: 'Copper', color: '#C88033', r: 1.28, mass: 63.546, group: 'Transition', period: 4, desc: 'Excellent electrical conductor. Essential trace mineral; used in enzymes and wiring.' },
+      Zn: { name: 'Zinc', color: '#7D80B0', r: 1.22, mass: 65.380, group: 'Transition', period: 4, desc: 'Cofactor in 300+ enzymes. Essential for immune function and wound healing.' },
+      Br: { name: 'Bromine', color: '#A62929', r: 1.14, mass: 79.904, group: 'Halogen', period: 4, desc: 'One of only two liquid elements at room temperature. Used in flame retardants.' },
+      Se: { name: 'Selenium', color: '#FFA100', r: 1.03, mass: 78.971, group: 'Nonmetal', period: 4, desc: 'Antioxidant trace element. Found in selenocysteine, the 21st amino acid.' },
+      I: { name: 'Iodine', color: '#940094', r: 1.33, mass: 126.90, group: 'Halogen', period: 5, desc: 'Essential for thyroid hormones. Used as an antiseptic and in photography.' },
+      default: { name: 'Element', color: '#BBBBBB', r: 0.80, mass: 0, group: 'Unknown', period: 0, desc: 'Element details not available in local database.' }
+    };
+
+    function elInfo(sym) { return EL[sym] || { ...EL.default, name: sym }; }
+
+    // ─── Atomic number → symbol ──────────────────────────────────────────────────
+    const AN2SYM = {
+      1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
+      11: 'Na', 12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar',
+      19: 'K', 20: 'Ca', 21: 'Sc', 22: 'Ti', 23: 'V', 24: 'Cr', 25: 'Mn', 26: 'Fe',
+      27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn', 33: 'As', 34: 'Se', 35: 'Br', 36: 'Kr',
+      37: 'Rb', 38: 'Sr', 39: 'Y', 53: 'I', 56: 'Ba', 80: 'Hg', 82: 'Pb', 83: 'Bi'
+    };
+    function atomicNum2sym(n) { return AN2SYM[n] || ('X' + n); }
+
+    // ─── THREE.JS ─────────────────────────────────────────────────────────────────
+    const canvas3d = document.getElementById('three-canvas');
+    const cont = document.getElementById('canvas-container');
+
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x060b10, 1);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
+    camera.position.set(0, 0, 16);
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const dl1 = new THREE.DirectionalLight(0x00d4ff, 0.85); dl1.position.set(8, 12, 8); scene.add(dl1);
+    const dl2 = new THREE.DirectionalLight(0xff6b35, 0.4); dl2.position.set(-6, -6, -6); scene.add(dl2);
+    const pl = new THREE.PointLight(0xffffff, 0.5, 120); pl.position.set(0, 6, 8); scene.add(pl);
+
+    const molGroup = new THREE.Group();
+    scene.add(molGroup);
+    let atomMeshes = [], hoveredMesh = null;
+
+    function resize() {
+      const w = cont.clientWidth, h = cont.clientHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // ─── Mouse/touch controls ─────────────────────────────────────────────────────
+    let isDrag = false, isRightDrag = false;
+    let prevX = 0, prevY = 0, velX = 0, velY = 0;
+    let zoom = 16, autoRot = true;
+    let idleTimer = null;
+
+    function resetIdleTimer() {
+      autoRot = false;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        autoRot = true;
+      }, 10000);
+    }
+
+    canvas3d.addEventListener('contextmenu', e => e.preventDefault());
+
+    canvas3d.addEventListener('mousedown', e => {
+      resetIdleTimer();
+      if (e.button === 2) isRightDrag = true;
+      else { isDrag = true; velX = velY = 0; }
+      prevX = e.clientX; prevY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => { isDrag = false; isRightDrag = false; });
+    canvas3d.addEventListener('mouseleave', () => hideTooltip());
+
+    canvas3d.addEventListener('mousemove', e => {
+      if (isDrag) {
+        resetIdleTimer();
+        velY = (e.clientX - prevX) * 0.006; velX = (e.clientY - prevY) * 0.006;
+        molGroup.rotation.y += velY; molGroup.rotation.x += velX;
+        prevX = e.clientX; prevY = e.clientY; hideTooltip();
+      } else if (isRightDrag) {
+        resetIdleTimer();
+        molGroup.position.x += (e.clientX - prevX) * 0.01;
+        molGroup.position.y -= (e.clientY - prevY) * 0.01;
+        prevX = e.clientX; prevY = e.clientY;
+      } else {
+        doHover(e);
+      }
+    });
+
+    canvas3d.addEventListener('wheel', e => {
+      resetIdleTimer();
+      zoom = Math.max(2, Math.min(80, zoom + e.deltaY * 0.025));
+      camera.position.z = zoom;
+    });
+
+    canvas3d.addEventListener('click', e => {
+      resetIdleTimer();
+      doClick(e);
+    });
+
+    // Touch
+    let lastTouch = null;
+    canvas3d.addEventListener('touchstart', e => {
+      resetIdleTimer();
+      lastTouch = e.touches[0];
+    });
+    canvas3d.addEventListener('touchmove', e => {
+      e.preventDefault();
+      resetIdleTimer();
+      const t = e.touches[0];
+      if (lastTouch) { molGroup.rotation.y += (t.clientX - lastTouch.clientX) * 0.006; molGroup.rotation.x += (t.clientY - lastTouch.clientY) * 0.006; }
+      lastTouch = t;
+    }, { passive: false });
+
+    // ─── Raycaster ────────────────────────────────────────────────────────────────
+    const rc = new THREE.Raycaster(), mPos = new THREE.Vector2();
+    function setMouse(e) { const r = canvas3d.getBoundingClientRect(); mPos.x = ((e.clientX - r.left) / r.width) * 2 - 1; mPos.y = -((e.clientY - r.top) / r.height) * 2 + 1; }
+
+    function doHover(e) {
+      if (!atomMeshes.length) return;
+      setMouse(e); rc.setFromCamera(mPos, camera);
+      const hits = rc.intersectObjects(atomMeshes);
+      if (hits.length) {
+        const m = hits[0].object;
+        if (hoveredMesh !== m) { if (hoveredMesh) hoveredMesh.material.emissiveIntensity = 0.08; hoveredMesh = m; m.material.emissiveIntensity = 0.55; canvas3d.style.cursor = 'pointer'; }
+        showTooltip(e, m.userData.sym);
+      } else {
+        if (hoveredMesh) { hoveredMesh.material.emissiveIntensity = 0.08; hoveredMesh = null; }
+        canvas3d.style.cursor = 'default'; hideTooltip();
+      }
+    }
+    function doClick(e) {
+      if (!atomMeshes.length) return;
+      setMouse(e); rc.setFromCamera(mPos, camera);
+      const hits = rc.intersectObjects(atomMeshes);
+      if (hits.length) showAtomCard(hits[0].object.userData.sym);
+    }
+
+    // ─── Tooltip ─────────────────────────────────────────────────────────────────
+    const tooltip = document.getElementById('atom-tooltip');
+    function showTooltip(e, sym) {
+      const info = elInfo(sym);
+      document.getElementById('tt-sym').textContent = sym;
+      document.getElementById('tt-nm').textContent = info.name;
+      tooltip.style.display = 'block';
+      const r = canvas3d.getBoundingClientRect();
+      let x = e.clientX - r.left + 14, y = e.clientY - r.top - 8;
+      if (x + 185 > r.width) x = e.clientX - r.left - 190;
+      tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
+    }
+    function hideTooltip() { tooltip.style.display = 'none'; }
+
+    // ─── Atom card ────────────────────────────────────────────────────────────────
+    function showAtomCard(sym) {
+      const info = elInfo(sym);
+      const card = document.getElementById('atom-card');
+      card.style.display = 'block';
+      card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">
+      <div style="width:30px;height:30px;border-radius:50%;background:${info.color};border:2px solid rgba(255,255,255,0.2);flex-shrink:0"></div>
+      <div><div class="ac-sym">${sym}</div><div class="ac-name">${info.name}</div></div>
+    </div>
+    <div class="ac-rows">
+      <b>Atomic Mass:</b> ${info.mass || '?'} u<br>
+      <b>Group:</b> ${info.group}<br>
+      <b>Period:</b> ${info.period || '?'}<br>
+      <b>Atomic Radius:</b> ~${info.r} Å
+    </div>
+    <div class="ac-desc">${info.desc}</div>`;
+    }
+
+    // ─── Render loop ──────────────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      if (autoRot && !isDrag && molGroup.children.length > 0) molGroup.rotation.y += 0.004;
+      if (!isDrag) { velX *= 0.92; velY *= 0.92; molGroup.rotation.x += velX; molGroup.rotation.y += velY; }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ─── Build molecule ───────────────────────────────────────────────────────────
+    function clearMolecule() {
+      while (molGroup.children.length) {
+        const c = molGroup.children[0];
+        c.geometry?.dispose(); c.material?.dispose();
+        molGroup.remove(c);
+      }
+      atomMeshes = []; hoveredMesh = null;
+    }
+
+    function buildMolecule(atoms, bonds) {
+      clearMolecule();
+      if (!atoms.length) throw new Error('No atoms');
+
+      // Center
+      let cx = 0, cy = 0, cz = 0;
+      atoms.forEach(a => { cx += a.x; cy += a.y; cz += a.z; });
+      cx /= atoms.length; cy /= atoms.length; cz /= atoms.length;
+
+      // Scale to fit nicely
+      let maxD = 0;
+      atoms.forEach(a => { const d = Math.sqrt((a.x - cx) ** 2 + (a.y - cy) ** 2 + (a.z - cz) ** 2); if (d > maxD) maxD = d; });
+      const scale = maxD > 0.5 ? 5.5 / maxD : 1.8;
+
+      // Atom spheres
+      atoms.forEach((atom, i) => {
+        const info = elInfo(atom.sym);
+        const r = Math.max(0.18, info.r * 0.42 * scale * 0.38);
+        const geo = new THREE.SphereGeometry(r, 30, 30);
+        const mat = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(info.color),
+          emissive: new THREE.Color(info.color),
+          emissiveIntensity: 0.08,
+          shininess: 95, specular: new THREE.Color(0xffffff)
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set((atom.x - cx) * scale, (atom.y - cy) * scale, (atom.z - cz) * scale);
+        mesh.userData = { sym: atom.sym, index: i };
+        molGroup.add(mesh); atomMeshes.push(mesh);
+      });
+
+      // Bond cylinders
+      bonds.forEach(bond => {
+        const a1 = atoms[bond.a], a2 = atoms[bond.b];
+        if (!a1 || !a2) return;
+        const p1 = new THREE.Vector3((a1.x - cx) * scale, (a1.y - cy) * scale, (a1.z - cz) * scale);
+        const p2 = new THREE.Vector3((a2.x - cx) * scale, (a2.y - cy) * scale, (a2.z - cz) * scale);
+        const dir = new THREE.Vector3().subVectors(p2, p1);
+        const len = dir.length();
+        if (len < 0.05) return;
+        const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        dir.normalize();
+        const order = Math.min(bond.order || 1, 3);
+        const offsets = order === 1 ? [0] : order === 2 ? [-0.075, 0.075] : [-0.115, 0, 0.115];
+        offsets.forEach(off => {
+          const cr = 0.036 * scale * 0.52;
+          const geo = new THREE.CylinderGeometry(cr, cr, len, 10);
+          const mat = new THREE.MeshPhongMaterial({ color: 0x263545, emissive: 0x0a1520, emissiveIntensity: 0.25, shininess: 25 });
+          const cyl = new THREE.Mesh(geo, mat);
+          cyl.position.copy(mid);
+          cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+          if (off !== 0) { const perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0.001)).normalize(); cyl.position.addScaledVector(perp, off * scale); }
+          molGroup.add(cyl);
+        });
+      });
+
+      // Set camera distance
+      zoom = Math.max(6, maxD * scale * 2.5 + 4);
+      camera.position.z = zoom;
+      molGroup.position.set(0, 0, 0);
+      molGroup.rotation.set(0.3, 0.5, 0);
+      autoRot = true;
+    }
+
+    // ─── PubChem API (free, no key) ───────────────────────────────────────────────
+    const BASE = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
+
+    async function fetchMolecule(name) {
+      // 1. Resolve name → CID
+      setLoadingText('Looking up compound…');
+      const cidRes = await fetch(`${BASE}/compound/name/${encodeURIComponent(name)}/cids/JSON`);
+      if (!cidRes.ok) throw new Error(`Compound "${name}" not found in PubChem. Try a different name.`);
+      const cidJson = await cidRes.json();
+      const cid = cidJson.IdentifierList.CID[0];
+
+      // 2. Try 3D conformer first, fall back to 2D
+      setLoadingText('Downloading 3D coordinates…');
+      let conformerData = null, is3d = false;
+      try {
+        const r3d = await fetch(`${BASE}/compound/cid/${cid}/JSON?record_type=3d`);
+        if (r3d.ok) { conformerData = await r3d.json(); is3d = true; }
+      } catch (e) { }
+
+      if (!conformerData) {
+        setLoadingText('No 3D data, using 2D layout…');
+        const r2d = await fetch(`${BASE}/compound/cid/${cid}/JSON`);
+        if (!r2d.ok) throw new Error('Failed to fetch structure data.');
+        conformerData = await r2d.json();
+      }
+
+      // 3. Properties
+      setLoadingText('Fetching molecule properties…');
+      const propFields = 'MolecularFormula,MolecularWeight,IUPACName,XLogP,HBondDonorCount,HBondAcceptorCount,RotatableBondCount,Complexity,Charge';
+      const propRes = await fetch(`${BASE}/compound/cid/${cid}/property/${propFields}/JSON`);
+      const props = propRes.ok ? (await propRes.json()).PropertyTable.Properties[0] : {};
+
+      // 4. Parse atoms & bonds
+      const cpd = conformerData.PC_Compounds[0];
+      const atomSection = cpd.atoms;
+      const coordSection = cpd.coords?.[0];
+      const bondSection = cpd.bonds;
+
+      const atomSymbols = atomSection.element.map(n => atomicNum2sym(n));
+      let xs = [], ys = [], zs = [];
+
+      if (coordSection) {
+        if (coordSection.conformers?.[0]) {
+          xs = coordSection.conformers[0].x || [];
+          ys = coordSection.conformers[0].y || [];
+          zs = coordSection.conformers[0].z || new Array(xs.length).fill(0);
+        } else {
+          xs = coordSection.x || []; ys = coordSection.y || [];
+          zs = coordSection.z || new Array(xs.length).fill(0);
+        }
+      }
+
+      const atoms = atomSymbols.map((sym, i) => ({ sym, x: xs[i] || 0, y: ys[i] || 0, z: zs[i] || 0 }));
+
+      const bonds = [];
+      if (bondSection) {
+        for (let i = 0; i < bondSection.aid1.length; i++) {
+          bonds.push({ a: bondSection.aid1[i] - 1, b: bondSection.aid2[i] - 1, order: bondSection.order[i] });
+        }
+      }
+
+      // 5. Fetch Summary/Description
+      setLoadingText('Searching for scientific facts…');
+      let summary = '';
+      try {
+        const descRes = await fetch(`${BASE}/compound/cid/${cid}/description/JSON`);
+        if (descRes.ok) {
+          const descJson = await descRes.json();
+          const info = descJson.InformationList.Information;
+          const dObj = info.find(i => i.Description && i.DescriptionSourceName === 'ChEBI') || info.find(i => i.Description);
+          if (dObj) summary = dObj.Description;
+        }
+      } catch (e) { }
+
+      return { cid, atoms, bonds, props, is3d, name, summary };
+    }
+
+    // ─── Update side panel ────────────────────────────────────────────────────────
+    function updatePanel(molData) {
+      const { cid, atoms, bonds, props, is3d, name } = molData;
+      document.getElementById('welcome-panel').style.display = 'none';
+      document.getElementById('mol-content').style.display = 'block';
+      document.getElementById('atom-card').style.display = 'none';
+
+      // Atom composition
+      const comp = {};
+      atoms.forEach(a => { comp[a.sym] = (comp[a.sym] || 0) + 1; });
+      const chipsHtml = Object.entries(comp).map(([sym, cnt]) => {
+        const info = elInfo(sym);
+        return `<span class="atom-chip"><span class="atom-dot" style="background:${info.color}"></span>${sym}: ${cnt}</span>`;
+      }).join('');
+
+      const mw = props.MolecularWeight ? parseFloat(props.MolecularWeight).toFixed(3) : '—';
+      const formula = props.MolecularFormula || '—';
+      const iupac = props.IUPACName || name;
+
+      document.getElementById('mol-main').innerHTML = `
+    <div class="mol-name">${capitalize(name)}</div>
+    <div class="mol-formula">${formula} <span style="font-size:0.65rem;color:var(--muted);margin-left:4px">${is3d ? '· 3D' : '· 2D'}</span></div>
+    <div class="info-block">
+      <div class="info-label">IUPAC Name</div>
+      <div class="info-value" style="font-size:0.72rem">${iupac}</div>
+    </div>
+    <div class="info-block">
+      <div class="info-label">Molecular Weight</div>
+      <div class="info-value">${mw} g/mol</div>
+    </div>
+    <div class="info-block">
+      <div class="info-label">Atoms &amp; Bonds</div>
+      <div class="info-value">${atoms.length} atoms · ${bonds.length} bonds</div>
+    </div>
+    <div class="info-block">
+      <div class="info-label">Composition</div>
+      <div class="info-value">${chipsHtml}</div>
+    </div>
+    ${molData.summary ? `<div class="info-block" style="background:rgba(255,107,53,0.06);border-color:rgba(255,107,53,0.3)">
+      <div class="info-label" style="color:var(--accent2)">Scientific Summary</div>
+      <div class="info-value" style="font-size:0.72rem;line-height:1.4">${molData.summary}</div>
+    </div>` : ''}
+    ${props.XLogP != null ? `<div class="info-block"><div class="info-label">LogP (lipophilicity)</div><div class="info-value">${props.XLogP}</div></div>` : ''}
+    ${props.HBondDonorCount != null ? `<div class="info-block"><div class="info-label">H-Bond Donors / Acceptors</div><div class="info-value">${props.HBondDonorCount} / ${props.HBondAcceptorCount}</div></div>` : ''}
+    ${props.RotatableBondCount != null ? `<div class="info-block"><div class="info-label">Rotatable Bonds</div><div class="info-value">${props.RotatableBondCount}</div></div>` : ''}
+    ${props.Complexity != null ? `<div class="info-block"><div class="info-label">Complexity</div><div class="info-value">${parseFloat(props.Complexity).toFixed(0)}</div></div>` : ''}
+    <div class="info-block" style="font-size:0.68rem">
+      <div class="info-label">PubChem CID</div>
+      <div class="info-value"><a href="https://pubchem.ncbi.nlm.nih.gov/compound/${cid}" target="_blank" style="color:var(--accent);text-decoration:none">${cid} ↗</a></div>
+    </div>
+    <div style="font-size:0.6rem;color:var(--muted);text-align:center;margin-top:8px;opacity:0.7">← Click any atom for element info</div>`;
+
+      // Legend
+      const uniqueSym = [...new Set(atoms.map(a => a.sym))];
+      document.getElementById('atom-legend').style.display = 'block';
+      document.getElementById('leg-wrap').innerHTML = uniqueSym.map(sym => {
+        const info = elInfo(sym);
+        return `<div class="leg-item"><div class="leg-dot" style="background:${info.color}"></div>${sym}</div>`;
+      }).join('');
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────────
+    function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    function setLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+    function setLoadingText(t) { document.getElementById('loading-text').textContent = t; }
+
+    function showError(msg) {
+      const e = document.getElementById('error-msg');
+      e.textContent = msg; e.style.display = 'block';
+      setTimeout(() => e.style.display = 'none', 6000);
+    }
+
+    // ─── Main load ────────────────────────────────────────────────────────────────
+    async function loadCompound(name) {
+      if (!name || !name.trim()) return;
+      name = name.trim();
+      document.getElementById('compound-input').value = name;
+      document.getElementById('canvas-welcome').style.display = 'none';
+      document.getElementById('search-btn').disabled = true;
+      hideTooltip();
+      setLoading(true);
+
+      try {
+        const molData = await fetchMolecule(name);
+        buildMolecule(molData.atoms, molData.bonds);
+        updatePanel(molData);
+      } catch (err) {
+        console.error(err);
+        showError(err.message || `Could not load "${name}". Try a different compound name.`);
+        if (!molGroup.children.length) document.getElementById('canvas-welcome').style.display = 'flex';
+      } finally {
+        setLoading(false);
+        document.getElementById('search-btn').disabled = false;
+      }
+    }
+
+    // ─── Event listeners ──────────────────────────────────────────────────────────
+    document.getElementById('search-btn').addEventListener('click', () => loadCompound(document.getElementById('compound-input').value));
+    document.getElementById('compound-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadCompound(e.target.value); });
+    document.getElementById('compound-input').focus();
+  </script>
+</body>
+
+</html>
